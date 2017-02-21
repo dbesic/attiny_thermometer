@@ -1,0 +1,73 @@
+#include <Adafruit_NeoPixel.h>
+#include <avr/sleep.h>
+#include <avr/wdt.h>
+
+#ifndef cbi
+#define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
+#endif
+#ifndef sbi
+#define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
+#endif
+
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(1, 0, NEO_GRB); // 0 - pin number
+
+
+byte sensorPin = A3;
+byte sensorValue = 0;
+
+float normalTH = 22.00;
+float highTH = 25.00;
+
+volatile boolean f_wdt = 1;
+
+void setup() {
+  
+  strip.begin();
+  strip.show(); // Initialize all pixels to 'off'
+  //setup_watchdog(6);
+}
+
+void loop() 
+{
+    ADCSRA &= ~(1<<ADEN); //Disable ADC, saves ~230uA
+    setup_watchdog(6); //Setup watchdog to go off after 1sec
+    sleep_mode(); //Go to sleep! Wake up 1sec later and check water
+    ADCSRA |= (1<<ADEN); //Enable ADC
+
+    float tempC = getTemp();
+      
+     if(tempC < normalTH) 
+       light(1);
+   
+     if(tempC > normalTH && tempC < highTH) 
+       light(2);
+   
+     if(tempC > highTH) 
+       light(3);
+  
+     light(0);
+}
+
+float getTemp(){
+  sensorValue = analogRead(sensorPin);
+  float voltage = sensorValue * 5.0;
+  voltage /= 1024.0; 
+  return (voltage - 0.5) * 100 ;
+}
+
+void light(byte input){
+  uint32_t color = strip.Color(0, 0, 0);  //off
+  
+  switch(input){
+    case 3: color=strip.Color(255, 0, 0);
+              break;
+    case 2: color=strip.Color(255, 255, 0);
+              break;
+    case 1: color=strip.Color(0, 255, 0);
+            break;
+  }
+  
+  strip.setPixelColor(1, color);
+  strip.show();
+  delay(30);
+}
