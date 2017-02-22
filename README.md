@@ -1,1 +1,0 @@
-# attiny_thermometer
